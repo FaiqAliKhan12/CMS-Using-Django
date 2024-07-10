@@ -281,4 +281,92 @@ def update_attendance_data(request):
         return HttpResponse("OK")
     except:
         return HttpResponse("Errror")
-    
+
+
+def staff_profile(request):
+    user = CustomUser.objects.get(id=request.user.id)
+    staff = Staffs.objects.get(admin=user)
+
+    context = {
+        "user": user,
+        "staff":staff
+    }
+
+    return render(request,"staff_template/staff_profile.html")
+
+def staff_profile_update(request):
+    if request.method != "POST":
+        messages.error(request,"Invalid Method!")
+        return redirect('staff_profile')
+    else:
+        first_name = request.POST.get('first_name')
+        last_name = request.POST.get('last_name')
+        password = request.POST.get('password')
+        address = request.POST.get('address')
+
+        try:
+            customuser = CustomUser.objects.get(id=request.user.id)
+            customuser.first_name = first_name
+            customuser.last_name = last_name
+            if password != None and password != "":
+                customuser.set_password(password)
+            customuser.save()
+
+            staff = Staffs.objects.get(admin=customuser.id)
+            staff.address = address
+            staff.save()
+
+            messages.success(request,"Profile Updated Successfully!!!")
+            return redirect('staff_profile')
+        except:
+            messages.error(request,"Failed to Update Profile")
+            return redirect('staff_profile')
+        
+def staff_result(request):
+    subjects = Subjects.objects.filter(staff_id = request.user.id)
+    session_years = SessionYearModel.objects.all()
+    context = {
+        "subjects":subjects,
+        "session_years":session_years
+    }
+
+    return render(request,"staff_template/add_result_template.html")
+
+
+def staff_result_update(request):
+    if request.method != "POST":
+        messages.error(request,"Invalid Method!")
+        return redirect('staff_add_result')
+    else:
+        student_admin_id = request.POST.get('student_list')
+        assignment_marks = request.POST.get('assignment_marks')
+        exam_marks = request.POST.get('exam_marks')
+        subject_id = request.POST.get('subject')
+
+        student_obj = Students.objects.get(admin=student_admin_id)
+        subject_obj = Subjects.objects.get(id = subject_id)
+
+        try: 
+            # Check if Students Result Already Exists or not 
+            check_exist = StudentResult.objects.filter(subject_id=subject_obj, 
+                                                       student_id=student_obj).exists() 
+            if check_exist: 
+                result = StudentResult.objects.get(subject_id=subject_obj, 
+                                                   student_id=student_obj) 
+                result.subject_assignment_marks = assignment_marks 
+                result.subject_exam_marks = exam_marks 
+                result.save() 
+                messages.success(request, "Result Updated Successfully!") 
+                return redirect('staff_add_result') 
+            else: 
+                result = StudentResult(student_id=student_obj, 
+                                       subject_id=subject_obj, 
+                                       subject_exam_marks=exam_marks, 
+                                       subject_assignment_marks=assignment_marks) 
+                result.save() 
+                messages.success(request, "Result Added Successfully!") 
+                return redirect('staff_add_result') 
+        except: 
+            messages.error(request, "Failed to Add Result!") 
+            return redirect('staff_add_result') 
+            
